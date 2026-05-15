@@ -67,9 +67,23 @@ def send_to_hermes(command: str) -> str:
     - "เพิ่ม subtitle ให้กับ output.mp4"
     """
     try:
-        # Call Hermes API (via Ollama or local endpoint)
+        # First, check available models
+        models_response = requests.get(
+            f"{HERMES_API_URL}/api/tags",
+            timeout=5
+        )
+        models_data = models_response.json()
+        available_models = models_data.get("models", [])
+        
+        if not available_models:
+            return "No models loaded in Hermes. Pull a model: docker exec hermes-ai ollama pull mistral"
+        
+        # Use first available model
+        model_name = available_models[0]["name"]
+        
+        # Call Hermes API (via Ollama)
         payload = {
-            "model": "hermes",
+            "model": model_name,
             "prompt": command,
             "stream": False
         }
@@ -77,7 +91,7 @@ def send_to_hermes(command: str) -> str:
         response = requests.post(
             f"{HERMES_API_URL}/api/generate",
             json=payload,
-            timeout=60
+            timeout=120
         )
         response.raise_for_status()
         
@@ -85,7 +99,9 @@ def send_to_hermes(command: str) -> str:
         return result.get("response", "No response from Hermes")
     
     except requests.exceptions.ConnectionError:
-        return "Cannot connect to Hermes API. Is Docker running?"
+        return "Cannot connect to Hermes. Is Docker running?"
+    except requests.exceptions.Timeout:
+        return "Hermes timeout. Model still processing or not loaded."
     except Exception as e:
         return f"Error communicating with Hermes: {str(e)}"
 
