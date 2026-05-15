@@ -14,7 +14,7 @@ services:
     networks:
       - thclaws-net
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:11434/api/tags"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -32,8 +32,7 @@ services:
       - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
       - HERMES_API_URL=http://hermes:11434
     depends_on:
-      hermes:
-        condition: service_healthy
+      - hermes
     networks:
       - thclaws-net
     restart: unless-stopped
