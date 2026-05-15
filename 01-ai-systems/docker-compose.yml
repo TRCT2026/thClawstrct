@@ -1,0 +1,51 @@
+version: '3.9'
+
+services:
+  # Hermes AI Agent (Ollama + LM Studio or local model)
+  hermes:
+    image: ollama/ollama:latest
+    container_name: hermes-ai
+    ports:
+      - "11434:11434"
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    volumes:
+      - hermes-models:/root/.ollama
+    networks:
+      - thclaws-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Line OA Bot (Python Flask)
+  line-bot:
+    build:
+      context: ./line-bot
+      dockerfile: Dockerfile
+    container_name: line-bot-server
+    ports:
+      - "5000:5000"
+    environment:
+      - LINE_CHANNEL_ACCESS_TOKEN=${LINE_CHANNEL_ACCESS_TOKEN}
+      - LINE_CHANNEL_SECRET=${LINE_CHANNEL_SECRET}
+      - HERMES_API_URL=http://hermes:11434
+    depends_on:
+      hermes:
+        condition: service_healthy
+    networks:
+      - thclaws-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  hermes-models:
+
+networks:
+  thclaws-net:
+    driver: bridge
